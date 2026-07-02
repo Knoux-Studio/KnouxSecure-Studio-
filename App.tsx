@@ -9,6 +9,17 @@ import SettingsView from './components/SettingsView';
 import Sidebar from './components/Sidebar';
 import VoiceControl from './components/VoiceControl';
 import { ChevronRight, Sun, Moon, Activity, Info, Keyboard, Search, Lock } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+
+const formatDuration = (ms: number): string => {
+    const totalSecs = Math.floor(ms / 1000);
+    const m = Math.floor(totalSecs / 60);
+    const s = totalSecs % 60;
+    if (m > 0) {
+        return `${m}m ${s}s`;
+    }
+    return `${s}s`;
+};
 
 const App: React.FC = () => {
     const [currentView, setCurrentView] = useState<View>('DASHBOARD');
@@ -18,6 +29,17 @@ const App: React.FC = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [isAutoLocked, setIsAutoLocked] = useState(false);
     const lastActivityTime = useRef<number>(Date.now());
+    
+    // Auto-lock Session Tracking Refs & States
+    const sessionStartTime = useRef<number>(Date.now());
+    const lockTime = useRef<number | null>(null);
+    const sessionActiveDuration = useRef<number>(0);
+    const [securedTimeText, setSecuredTimeText] = useState('');
+    const [activeSessionDurationText, setActiveSessionDurationText] = useState('');
+    const [securedDurationText, setSecuredDurationText] = useState('0s');
+    const [isShaking, setIsShaking] = useState(false);
+    const [unlockMethod, setUnlockMethod] = useState<'pin' | 'button'>('pin');
+    const [enteredPin, setEnteredPin] = useState('');
     
     const [settings, setSettings] = useState<AppSettings>(() => {
         const stored = localStorage.getItem('knoux_settings');
@@ -146,6 +168,70 @@ const App: React.FC = () => {
         }
     }, [isDarkMode]);
 
+    // Locked Duration Live Counter Effect
+    useEffect(() => {
+        if (!isAutoLocked || !lockTime.current) return;
+        
+        const updateSecuredDuration = () => {
+            const elapsed = Date.now() - lockTime.current!;
+            setSecuredDurationText(formatDuration(elapsed));
+        };
+        
+        updateSecuredDuration();
+        const interval = setInterval(updateSecuredDuration, 1000);
+        return () => clearInterval(interval);
+    }, [isAutoLocked]);
+
+    const handlePinDigit = (digit: string) => {
+        if (enteredPin.length < 4) {
+            const nextPin = enteredPin + digit;
+            setEnteredPin(nextPin);
+            
+            if (nextPin.length === 4) {
+                const correctPin = settings.securityPin || "1337";
+                if (nextPin === correctPin) {
+                    setIsAutoLocked(false);
+                    lastActivityTime.current = Date.now();
+                    sessionStartTime.current = Date.now();
+                    
+                    const securedAt = securedTimeText || new Date().toLocaleTimeString();
+                    const lockDurationMs = Date.now() - (lockTime.current || Date.now());
+                    const lockDurationText = formatDuration(lockDurationMs);
+                    const idleTimeoutMinutes = settings.autoLockTimeout || 0;
+
+                    addLog(
+                        LogLevel.INFO, 
+                        `Session Summary: System unlocked via Secure PIN. Session was secured at ${securedAt} after ${idleTimeoutMinutes}m of user inactivity. Lock state duration: ${lockDurationText}.`, 
+                        "SYSTEM"
+                    );
+                    setEnteredPin('');
+                } else {
+                    setIsShaking(true);
+                    setTimeout(() => setIsShaking(false), 500);
+                    setEnteredPin('');
+                    addLog(LogLevel.ERROR, `Unauthorized PIN attempt detected. Invalid PIN entered.`, "SYSTEM");
+                }
+            }
+        }
+    };
+
+    const handleQuickUnlock = () => {
+        setIsAutoLocked(false);
+        lastActivityTime.current = Date.now();
+        sessionStartTime.current = Date.now();
+        
+        const securedAt = securedTimeText || new Date().toLocaleTimeString();
+        const lockDurationMs = Date.now() - (lockTime.current || Date.now());
+        const lockDurationText = formatDuration(lockDurationMs);
+        const idleTimeoutMinutes = settings.autoLockTimeout || 0;
+
+        addLog(
+            LogLevel.INFO, 
+            `Session Summary: System unlocked via Quick Unlock. Session was secured at ${securedAt} after ${idleTimeoutMinutes}m of user inactivity. Lock state duration: ${lockDurationText}.`, 
+            "SYSTEM"
+        );
+    };
+
     // Auto-Lock Inactivity Handler
     useEffect(() => {
         if (isAutoLocked) return;
@@ -156,6 +242,11 @@ const App: React.FC = () => {
             const idleTimeMs = Date.now() - lastActivityTime.current;
             const thresholdMs = timeoutMinutes * 60 * 1000;
             if (idleTimeMs >= thresholdMs) {
+                lockTime.current = Date.now();
+                const activeMs = Math.max(0, lastActivityTime.current - sessionStartTime.current);
+                sessionActiveDuration.current = activeMs;
+                setActiveSessionDurationText(formatDuration(activeMs));
+                setSecuredTimeText(new Date().toLocaleTimeString());
                 setIsAutoLocked(true);
                 addLog(LogLevel.WARN, `Inactivity threshold reached (${timeoutMinutes}m). App locked.`, "SYSTEM");
             }
@@ -475,38 +566,172 @@ const App: React.FC = () => {
                 )}
 
                 {/* Auto-Lock Overlay Modal */}
-                {isAutoLocked && (
-                    <div className="fixed inset-0 bg-black/95 backdrop-blur-md z-50 flex flex-col items-center justify-center p-4">
-                        <div className="glass-card max-w-md w-full p-8 rounded-[2.5rem] border border-purple-500/30 text-center space-y-6 relative overflow-hidden">
-                            <div className="absolute -top-12 -left-12 w-48 h-48 bg-purple-600/10 blur-[80px] rounded-full"></div>
-                            <div className="mx-auto w-16 h-16 bg-purple-600/10 border border-purple-500/20 text-purple-400 rounded-full flex items-center justify-center animate-pulse">
-                                <Lock size={32} />
-                            </div>
-                            <div className="space-y-2">
-                                <h3 className="text-2xl font-black text-white">Suite Locked</h3>
-                                <p className="text-xs text-slate-400 uppercase tracking-widest font-mono">Session secured due to inactivity</p>
-                            </div>
-                            <div className="py-4 border-y border-white/5 space-y-1">
-                                <div className="text-3xl font-black text-slate-100 tracking-wider">
-                                    {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                </div>
-                                <div className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">
-                                    System Time (UTC)
-                                </div>
-                            </div>
-                            <button 
-                                onClick={() => {
-                                    setIsAutoLocked(false);
-                                    lastActivityTime.current = Date.now();
-                                    addLog(LogLevel.INFO, "Session unlocked. Control credentials verified.", "SYSTEM");
+                <AnimatePresence>
+                    {isAutoLocked && (
+                        <motion.div 
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 0.3 }}
+                            className="fixed inset-0 bg-black/95 backdrop-blur-md z-50 flex flex-col items-center justify-center p-4"
+                        >
+                            <motion.div
+                                initial={{ scale: 0.9, opacity: 0 }}
+                                animate={isShaking ? { 
+                                    scale: 1, 
+                                    opacity: 1, 
+                                    x: [-8, 8, -8, 8, -4, 4, 0] 
+                                } : { 
+                                    scale: 1, 
+                                    opacity: 1, 
+                                    x: 0 
                                 }}
-                                className="w-full py-4 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-2xl shadow-lg shadow-purple-500/25 transition-all duration-300"
+                                exit={{ scale: 0.9, opacity: 0 }}
+                                transition={isShaking ? {
+                                    x: { type: "spring", stiffness: 600, damping: 15 },
+                                    default: { duration: 0.3 }
+                                } : {
+                                    duration: 0.3,
+                                    ease: "easeOut"
+                                }}
+                                className="glass-card max-w-md w-full p-8 rounded-[2.5rem] border border-purple-500/30 text-center space-y-6 relative overflow-hidden"
                             >
-                                UNLOCK SYSTEM
-                            </button>
-                        </div>
-                    </div>
-                )}
+                                <div className="absolute -top-12 -left-12 w-48 h-48 bg-purple-600/10 blur-[80px] rounded-full"></div>
+                                
+                                <div className="mx-auto w-16 h-16 bg-purple-600/10 border border-purple-500/20 text-purple-400 rounded-full flex items-center justify-center animate-pulse">
+                                    <Lock size={32} />
+                                </div>
+                                
+                                <div className="space-y-2">
+                                    <h3 className="text-2xl font-black text-white">Suite Secured</h3>
+                                    <p className="text-xs text-slate-400 uppercase tracking-widest font-mono">Session auto-locked due to inactivity</p>
+                                </div>
+
+                                {/* Active Session Stats */}
+                                <div className="grid grid-cols-2 gap-4 py-3 border-y border-white/5 text-center text-xs">
+                                    <div className="space-y-1">
+                                        <div className="text-[10px] text-slate-500 uppercase tracking-widest font-black">
+                                            Secured At
+                                        </div>
+                                        <div className="font-mono font-bold text-slate-300 text-sm">
+                                            {securedTimeText || "N/A"}
+                                        </div>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <div className="text-[10px] text-slate-500 uppercase tracking-widest font-black">
+                                            Session Duration
+                                        </div>
+                                        <div className="font-mono font-bold text-purple-400 text-sm">
+                                            {activeSessionDurationText || "0s"}
+                                        </div>
+                                    </div>
+                                    <div className="col-span-2 space-y-1 pt-1.5 border-t border-white/5">
+                                        <div className="text-[9px] text-slate-500 uppercase tracking-widest font-black">
+                                            Secured Duration
+                                        </div>
+                                        <div className="font-mono text-[11px] font-medium text-purple-300/80">
+                                            {securedDurationText}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Unlock Method Toggle */}
+                                <div className="flex bg-black/40 p-1 rounded-xl border border-white/5 w-full max-w-[240px] mx-auto text-xs font-bold">
+                                    <button
+                                        onClick={() => {
+                                            setUnlockMethod('pin');
+                                            setEnteredPin('');
+                                        }}
+                                        className={`flex-1 py-1.5 rounded-lg transition-all ${
+                                            unlockMethod === 'pin' 
+                                                ? 'bg-purple-600 text-white shadow-md' 
+                                                : 'text-slate-500 hover:text-slate-300'
+                                        }`}
+                                    >
+                                        Secure PIN
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            setUnlockMethod('button');
+                                            setEnteredPin('');
+                                        }}
+                                        className={`flex-1 py-1.5 rounded-lg transition-all ${
+                                            unlockMethod === 'button' 
+                                                ? 'bg-purple-600 text-white shadow-md' 
+                                                : 'text-slate-500 hover:text-slate-300'
+                                        }`}
+                                    >
+                                        Quick Unlock
+                                    </button>
+                                </div>
+
+                                {unlockMethod === 'pin' ? (
+                                    <div className="space-y-5">
+                                        <div className="space-y-2">
+                                            <div className="text-[10px] text-slate-500 uppercase tracking-widest font-black">
+                                                Enter Security PIN
+                                            </div>
+                                            <div className="flex justify-center gap-3 py-1">
+                                                {[0, 1, 2, 3].map((idx) => (
+                                                    <div 
+                                                        key={idx}
+                                                        className={`w-3.5 h-3.5 rounded-full border-2 transition-all duration-200 ${
+                                                            idx < enteredPin.length 
+                                                                ? 'bg-purple-500 border-purple-500 scale-110 shadow-lg shadow-purple-500/50' 
+                                                                : 'border-slate-700 bg-transparent'
+                                                        }`}
+                                                    />
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        {/* PIN Keyboard Grid */}
+                                        <div className="grid grid-cols-3 gap-3 max-w-[240px] mx-auto">
+                                            {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((digit) => (
+                                                <button
+                                                    key={digit}
+                                                    onClick={() => handlePinDigit(digit)}
+                                                    className="w-14 h-14 rounded-full bg-white/5 hover:bg-purple-600/20 hover:border-purple-500/30 border border-white/5 text-base font-bold transition-all text-slate-200 flex items-center justify-center active:scale-95"
+                                                >
+                                                    {digit}
+                                                </button>
+                                            ))}
+                                            <button
+                                                onClick={() => setEnteredPin('')}
+                                                className="w-14 h-14 rounded-full bg-white/5 hover:bg-red-500/10 hover:border-red-500/30 border border-white/5 text-[10px] font-black uppercase tracking-tight transition-all text-red-400 flex items-center justify-center active:scale-95"
+                                            >
+                                                Clear
+                                            </button>
+                                            <button
+                                                onClick={() => handlePinDigit('0')}
+                                                className="w-14 h-14 rounded-full bg-white/5 hover:bg-purple-600/20 hover:border-purple-500/30 border border-white/5 text-base font-bold transition-all text-slate-200 flex items-center justify-center active:scale-95"
+                                            >
+                                                0
+                                            </button>
+                                            <button
+                                                onClick={() => setEnteredPin(prev => prev.slice(0, -1))}
+                                                className="w-14 h-14 rounded-full bg-white/5 hover:bg-purple-600/20 hover:border-purple-500/30 border border-white/5 text-[10px] font-black uppercase tracking-tight transition-all text-slate-400 flex items-center justify-center active:scale-95"
+                                            >
+                                                Del
+                                            </button>
+                                        </div>
+
+                                        <div className="text-[10px] text-slate-600 italic">
+                                            Hint: Default PIN is <span className="font-bold text-purple-400 font-mono">1337</span> (configurable in settings)
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <button 
+                                        onClick={handleQuickUnlock}
+                                        className="w-full py-4 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-2xl shadow-lg shadow-purple-500/25 transition-all duration-300 uppercase tracking-wider text-xs"
+                                    >
+                                        UNLOCK SYSTEM
+                                    </button>
+                                )}
+                            </motion.div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
             </main>
         </div>
     );

@@ -231,6 +231,30 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, setSettings, onLo
                                 <option value={30} className="bg-slate-950">30 Minutes</option>
                             </select>
                         </div>
+
+                        <div className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5 group hover:border-purple-500/30 transition-all">
+                            <div className="flex items-center gap-4">
+                                <Lock size={20} className="text-slate-400 group-hover:text-purple-400 transition-colors" />
+                                <div>
+                                    <div className="text-sm font-bold">4-Digit Security PIN</div>
+                                    <div className="text-[10px] text-slate-500 font-medium">Auto-lock alternative authentication PIN</div>
+                                </div>
+                            </div>
+                            <input 
+                                type="text"
+                                maxLength={4}
+                                pattern="\d*"
+                                value={settings.securityPin || "1337"}
+                                onChange={(e) => {
+                                    const val = e.target.value.replace(/\D/g, '').slice(0, 4);
+                                    setSettings(prev => ({ ...prev, securityPin: val }));
+                                    if (val.length === 4) {
+                                        onLog(LogLevel.INFO, `Lock screen security PIN updated to "${val}".`, "SECURITY");
+                                    }
+                                }}
+                                className="bg-black/40 hover:bg-black/60 border border-white/10 hover:border-purple-500/30 rounded-xl px-3 py-2 text-xs font-bold font-mono text-purple-400 outline-none focus:border-purple-500 transition-all cursor-pointer w-24 text-center"
+                            />
+                        </div>
                     </div>
                 </div>
 

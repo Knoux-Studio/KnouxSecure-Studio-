@@ -46,6 +46,7 @@ export interface AppSettings {
     autoScanOnSave: boolean;
     notificationsEnabled: boolean;
     autoLockTimeout?: number; // Inactivity timeout in minutes (0 = disabled)
+    securityPin?: string; // 4-digit PIN for auto-lock (e.g. '1337')
 }
 
 export interface CVEAlert {
