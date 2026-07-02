@@ -1,6 +1,6 @@
 {
   "name": "KnouxSecure Studio™",
   "description": "Professional offline-first security dashboard for script protection, static analysis, and encrypted vault management.",
-  "requestFramePermissions": [],
+  "requestFramePermissions": ["microphone"],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

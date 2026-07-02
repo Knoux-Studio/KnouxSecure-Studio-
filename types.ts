@@ -45,4 +45,15 @@ export interface AppSettings {
     protectionLevel: 'UNPROTECTED' | 'PROTECTED' | 'LOCKED';
     autoScanOnSave: boolean;
     notificationsEnabled: boolean;
+    autoLockTimeout?: number; // Inactivity timeout in minutes (0 = disabled)
 }
+
+export interface CVEAlert {
+    id: string;
+    title: string;
+    severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+    description: string;
+    publishedDate: string;
+    sourceUrl?: string;
+}
+
