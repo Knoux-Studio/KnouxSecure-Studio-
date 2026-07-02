@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { AppSettings, LogLevel } from '../types';
-import { Settings, Shield, Zap, Lock, Eye, EyeOff, Bell, Save, RotateCcw, Check, X, Key, Clock, Sparkles, Copy } from 'lucide-react';
+import { Settings, Shield, Zap, Lock, Eye, EyeOff, Bell, Save, RotateCcw, Check, X, Key, Clock, Sparkles, Copy, Wifi, Globe, Palette } from 'lucide-react';
 
 interface SettingsViewProps {
     settings: AppSettings;
@@ -255,6 +255,33 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, setSettings, onLo
                                 className="bg-black/40 hover:bg-black/60 border border-white/10 hover:border-purple-500/30 rounded-xl px-3 py-2 text-xs font-bold font-mono text-purple-400 outline-none focus:border-purple-500 transition-all cursor-pointer w-24 text-center"
                             />
                         </div>
+
+                        {/* Auto-Logout Session Timeout */}
+                        <div className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5 group hover:border-purple-500/30 transition-all">
+                            <div className="flex items-center gap-4">
+                                <Clock size={20} className="text-slate-400 group-hover:text-purple-400 transition-colors" />
+                                <div>
+                                    <div className="text-sm font-bold">Auto-Logout Session Limit</div>
+                                    <div className="text-[10px] text-slate-500 font-medium">Fully clears memory and logs out after absolute duration</div>
+                                </div>
+                            </div>
+                            <select 
+                                value={settings.autoLogoutTimeout || 0}
+                                onChange={(e) => {
+                                    const value = parseInt(e.target.value);
+                                    setSettings(prev => ({ ...prev, autoLogoutTimeout: value }));
+                                    onLog(LogLevel.INFO, `Auto-Logout session limit adjusted to ${value === 0 ? 'Disabled' : `${value} minute(s)`}.`, "SECURITY");
+                                }}
+                                className="bg-black/40 hover:bg-black/60 border border-white/10 hover:border-purple-500/30 rounded-xl px-3 py-2 text-xs font-bold text-slate-200 outline-none focus:border-purple-500 transition-all cursor-pointer"
+                            >
+                                <option value={0} className="bg-slate-950">Disabled</option>
+                                <option value={1} className="bg-slate-950">1 Minute</option>
+                                <option value={5} className="bg-slate-950">5 Minutes</option>
+                                <option value={15} className="bg-slate-950">15 Minutes</option>
+                                <option value={30} className="bg-slate-950">30 Minutes</option>
+                                <option value={60} className="bg-slate-950">60 Minutes</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
 
@@ -464,6 +491,210 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, setSettings, onLo
                     >
                         <Sparkles size={14} /> Generate Credentials
                     </button>
+                </div>
+
+                {/* Trusted Network Gateway Policy Card */}
+                <div className="glass-card p-8 rounded-[2.5rem] space-y-6 lg:col-span-2">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div className="flex items-center gap-3">
+                            <div className="p-3 bg-purple-600/10 border border-purple-500/20 text-purple-400 rounded-2xl">
+                                <Wifi size={24} />
+                            </div>
+                            <div>
+                                <h3 className="text-xl font-bold">Trusted Network Policy</h3>
+                                <p className="text-[10px] text-slate-500 font-medium uppercase tracking-wider">Configure network zones where inactivity auto-lock is bypassed</p>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-3 bg-black/40 px-4 py-2.5 rounded-2xl border border-white/5">
+                            <span className="text-xs text-slate-400 font-semibold">Enable Network Bypass</span>
+                            <button 
+                                onClick={() => handleToggle('trustedNetworkEnabled')}
+                                className={`w-12 h-6 rounded-full transition-all relative ${settings.trustedNetworkEnabled ? 'bg-purple-600' : 'bg-slate-800'}`}
+                            >
+                                <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${settings.trustedNetworkEnabled ? 'right-1' : 'left-1'}`}></div>
+                            </button>
+                        </div>
+                    </div>
+
+                    <p className="text-xs text-slate-400 leading-relaxed max-w-3xl">
+                        When the system is connected to a secure local network matching your saved SSID or gateway IP, the automatic idle timer is temporarily suspended. This ensures smooth operations in physical security zones (e.g. secure corporate offices) while maintaining standard lock behavior on unknown connections.
+                    </p>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+                        {/* Live/Simulated Network Panel */}
+                        <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/5 flex flex-col justify-between space-y-4">
+                            <div className="space-y-2">
+                                <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
+                                    <Globe size={11} className="text-purple-400 animate-pulse" /> Live Gateway Telemetry
+                                </div>
+                                <div className="space-y-1.5 font-mono text-xs">
+                                    <div className="flex justify-between">
+                                        <span className="text-slate-500">Active SSID:</span>
+                                        <span className="text-purple-400 font-bold">KNOUX_HQ_SECURE</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-slate-500">Gateway IP:</span>
+                                        <span className="text-purple-400 font-bold">192.168.1.1</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-slate-500">Signal Integrity:</span>
+                                        <span className="text-slate-300">98% (Excellent)</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <button
+                                onClick={() => {
+                                    setSettings(prev => ({
+                                        ...prev,
+                                        trustedSSID: "KNOUX_HQ_SECURE",
+                                        trustedIP: "192.168.1.1"
+                                    }));
+                                    onLog(LogLevel.INFO, "Auto-lock policy: Saved KNOUX_HQ_SECURE / 192.168.1.1 as Trusted Network Zone.", "SETTINGS");
+                                }}
+                                className="w-full py-2.5 bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white font-bold text-[10px] tracking-wider uppercase rounded-xl border border-white/5 hover:border-purple-500/30 transition-all flex items-center justify-center gap-1.5"
+                            >
+                                <Check size={12} className="text-purple-400" /> Trust Current Network
+                            </button>
+                        </div>
+
+                        {/* Custom Gateway Configurations */}
+                        <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/5 space-y-4">
+                            <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                                Saved Gateway Configuration
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div className="space-y-1.5">
+                                    <label className="text-[10px] text-slate-500 font-bold uppercase">Trusted SSID</label>
+                                    <input 
+                                        type="text"
+                                        placeholder="e.g. KNOUX_HQ_SECURE"
+                                        value={settings.trustedSSID || ''}
+                                        onChange={(e) => setSettings(prev => ({ ...prev, trustedSSID: e.target.value }))}
+                                        className="w-full bg-black/40 border border-white/10 rounded-xl px-3.5 py-2 text-xs font-mono text-purple-300 focus:border-purple-500 outline-none transition-all"
+                                    />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-[10px] text-slate-500 font-bold uppercase">Trusted Gateway IP</label>
+                                    <input 
+                                        type="text"
+                                        placeholder="e.g. 192.168.1.1"
+                                        value={settings.trustedIP || ''}
+                                        onChange={(e) => setSettings(prev => ({ ...prev, trustedIP: e.target.value }))}
+                                        className="w-full bg-black/40 border border-white/10 rounded-xl px-3.5 py-2 text-xs font-mono text-purple-300 focus:border-purple-500 outline-none transition-all"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Status Alert Banner */}
+                    <div className={`p-4 rounded-xl border transition-all ${
+                        settings.trustedNetworkEnabled && 
+                        (settings.trustedSSID === "KNOUX_HQ_SECURE" || settings.trustedIP === "192.168.1.1")
+                        ? 'bg-emerald-500/5 border-emerald-500/20 text-emerald-400'
+                        : 'bg-slate-950/40 border-white/5 text-slate-400'
+                    }`}>
+                        <div className="flex items-center gap-2.5 text-xs">
+                            <span className={`w-2 h-2 rounded-full animate-pulse shrink-0 ${
+                                settings.trustedNetworkEnabled && 
+                                (settings.trustedSSID === "KNOUX_HQ_SECURE" || settings.trustedIP === "192.168.1.1")
+                                ? 'bg-emerald-400'
+                                : 'bg-slate-500'
+                            }`} />
+                            <span className="font-medium">
+                                {settings.trustedNetworkEnabled ? (
+                                    (settings.trustedSSID === "KNOUX_HQ_SECURE" || settings.trustedIP === "192.168.1.1") ? (
+                                        <span><strong className="font-extrabold text-emerald-300">TRUSTED ZONE SUSPENSION ACTIVE:</strong> Verified connection to <code className="bg-emerald-500/10 px-1 rounded font-mono text-emerald-200">{settings.trustedSSID || settings.trustedIP}</code>. Inactivity auto-lock suspension is in effect.</span>
+                                    ) : (
+                                        <span><strong className="font-bold">STANDBY:</strong> Suspension enabled but current network (SSID: KNOUX_HQ_SECURE, IP: 192.168.1.1) does not match the configured credentials. Standard auto-lock timer is active.</span>
+                                    )
+                                ) : (
+                                    <span><strong className="font-bold">STANDARD POLICY:</strong> Trusted Network suspensions are disabled. Standard auto-lock policy is active in all zones.</span>
+                                )}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Custom Accent Color Selection Card */}
+                <div className="glass-card p-8 rounded-[2.5rem] space-y-6">
+                    <div className="flex items-center gap-3">
+                        <Palette className="text-purple-500" />
+                        <h3 className="text-xl font-bold">Theme & Personalization</h3>
+                    </div>
+                    <p className="text-xs text-slate-500 leading-relaxed">
+                        Customize the primary accent color of the KnouxSecure interface. This dynamically synchronizes glowing borders, button shadows, status elements, and canvas animations.
+                    </p>
+
+                    <div className="space-y-4">
+                        <div className="text-xs font-bold text-slate-300 uppercase tracking-widest">Select Accent Color</div>
+                        
+                        <div className="grid grid-cols-6 gap-3">
+                            {[
+                                { name: 'Amethyst', hex: '#A855F7', bg: 'bg-purple-500' },
+                                { name: 'Emerald', hex: '#10B981', bg: 'bg-emerald-500' },
+                                { name: 'Sapphire', hex: '#3B82F6', bg: 'bg-blue-500' },
+                                { name: 'Ruby', hex: '#EF4444', bg: 'bg-red-500' },
+                                { name: 'Amber', hex: '#F59E0B', bg: 'bg-amber-500' },
+                                { name: 'Rose', hex: '#EC4899', bg: 'bg-pink-500' },
+                            ].map((col) => (
+                                <button
+                                    key={col.hex}
+                                    type="button"
+                                    onClick={() => {
+                                        setSettings(prev => ({ ...prev, customAccentColor: col.hex }));
+                                        onLog(LogLevel.INFO, `Interface theme changed to ${col.name} (${col.hex}).`, "SETTINGS");
+                                    }}
+                                    className={`w-full aspect-square rounded-2xl transition-all border-2 relative group flex items-center justify-center ${
+                                        settings.customAccentColor === col.hex 
+                                            ? 'border-white scale-110 shadow-lg' 
+                                            : 'border-white/5 hover:border-white/20 hover:scale-105'
+                                    }`}
+                                    title={col.name}
+                                >
+                                    <div className={`w-8 h-8 rounded-lg ${col.bg}`}></div>
+                                    {settings.customAccentColor === col.hex && (
+                                        <div className="absolute inset-0 flex items-center justify-center text-white">
+                                            <Check size={14} strokeWidth={3} />
+                                        </div>
+                                    )}
+                                </button>
+                            ))}
+                        </div>
+
+                        {/* Custom Color Input */}
+                        <div className="flex items-center gap-3 p-3 bg-white/5 rounded-2xl border border-white/5 group hover:border-purple-500/30 transition-all">
+                            <div className="w-10 h-10 rounded-xl overflow-hidden shrink-0 border border-white/10 relative flex items-center justify-center bg-black/20">
+                                <input 
+                                    type="color"
+                                    value={settings.customAccentColor || '#A855F7'}
+                                    onChange={(e) => {
+                                        setSettings(prev => ({ ...prev, customAccentColor: e.target.value }));
+                                    }}
+                                    className="absolute inset-0 w-full h-full cursor-pointer opacity-0"
+                                />
+                                <div 
+                                    className="w-8 h-8 rounded-lg"
+                                    style={{ backgroundColor: settings.customAccentColor || '#A855F7' }}
+                                />
+                            </div>
+                            <div className="flex-1">
+                                <div className="text-[10px] font-bold text-slate-400">Custom Color Wheel</div>
+                                <input 
+                                    type="text"
+                                    value={settings.customAccentColor || '#A855F7'}
+                                    onChange={(e) => {
+                                        const val = e.target.value;
+                                        if (val.startsWith('#') && val.length <= 7) {
+                                            setSettings(prev => ({ ...prev, customAccentColor: val }));
+                                        }
+                                    }}
+                                    className="bg-transparent text-xs font-mono font-bold text-purple-400 w-full outline-none focus:text-white"
+                                />
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 

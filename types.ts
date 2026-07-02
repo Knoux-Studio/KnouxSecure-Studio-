@@ -28,6 +28,8 @@ export interface VaultFile {
     encryptedAt: string;
     size: string;
     status: 'LOCKED' | 'UNLOCKED';
+    passwordValue?: string;
+    entropy?: number;
 }
 
 export interface SandboxResult {
@@ -47,6 +49,11 @@ export interface AppSettings {
     notificationsEnabled: boolean;
     autoLockTimeout?: number; // Inactivity timeout in minutes (0 = disabled)
     securityPin?: string; // 4-digit PIN for auto-lock (e.g. '1337')
+    trustedNetworkEnabled?: boolean;
+    trustedSSID?: string;
+    trustedIP?: string;
+    customAccentColor?: string;
+    autoLogoutTimeout?: number; // Session limit in minutes (0 = disabled)
 }
 
 export interface CVEAlert {

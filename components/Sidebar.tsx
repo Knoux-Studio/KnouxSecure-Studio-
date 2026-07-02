@@ -21,8 +21,13 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setView }) => {
         <aside className="w-64 bg-[#0F0B1D]/50 border-r border-white/5 flex flex-col shrink-0 z-30">
             <div className="p-6 mb-4">
                 <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-xl bg-purple-600 shadow-xl shadow-purple-500/30">
-                        <Shield size={24} className="text-white" />
+                    <div className="w-10 h-10 rounded-xl overflow-hidden border border-white/10 shadow-lg bg-black/40 flex items-center justify-center shrink-0">
+                        <img 
+                            src="https://i.postimg.cc/WbBbwkGT/cropped-circle-image.png" 
+                            alt="Knoux Logo" 
+                            className="w-full h-full object-cover"
+                            referrerPolicy="no-referrer"
+                        />
                     </div>
                     <div>
                         <h1 className="text-lg font-bold tracking-tight text-white leading-none">KNOUX</h1>

@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { LogLevel, SecurityIssue } from '../types';
 import { analyzeCodeWithAI } from '../services/geminiService';
+import { playSecuritySound } from '../services/soundService';
 // Added missing 'Scan' icon to imports
 import { Terminal, ShieldAlert, CheckCircle2, Loader2, Play, AlertTriangle, Scan } from 'lucide-react';
 
@@ -29,8 +30,10 @@ const ScannerView: React.FC<ScannerViewProps> = ({ onLog }) => {
             } else {
                 onLog(LogLevel.INFO, "Analysis complete. No threats detected.", "SCANNER");
             }
+            playSecuritySound('scan');
         } catch (error) {
             onLog(LogLevel.ERROR, "AI analysis engine failed to respond.", "SCANNER");
+            playSecuritySound('error');
         } finally {
             setIsAnalyzing(false);
         }
